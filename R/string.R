@@ -1,88 +1,103 @@
-#' String
+#' Strings
 #'
-#' Initialize a newly created String object so that it represents an empty
+#' Initialize a newly created string object so that it represents an empty
 #' character sequence.
 #'
 #' @param value The initial value of the string.
 #' @param offset The initial offset.
 #' @param count The length.
+#' @param x An object to be tested.
 #'
 #' @export
-String <- function(value = NULL, offset = 1, count = length(value)) {
-  if (!is.null(value)) {
-    str <- paste(value[offset:count], sep = '', collapse = '')
+string <- function(value) {
+  if (!is.character(value) && !is.string(value)) {
+    stop('`value` must be of class string or character', call. = FALSE)
   }
-  string$new(str)
+
+  String$new(value)
 }
 
-string <- R6::R6Class(
-  classname = 'String',
+#' @export
+#' @rdname string
+is.string <- function(x) {
+  'string' %in% class(x)
+}
+
+String <- R6::R6Class(
+  classname = 'string',
+  private = list(
+    value = ''
+  ),
   public = list(
-    .value = NULL,
+    CASE_INSENSITIVE_ORDER = NULL,   # unused for now
     initialize = function(x) {
-      self$.value <- x
-      self
-    },
-    length = function() {
-      nchar(self$.value)
-    },
-    isEmpty = function() {
-      nchar(self$.value) == 0
+      if (is.string(x)) {
+        private$value <- x$toString()
+      } else {
+        private$value <- as.character(x)
+      }
+
+      return(self)
     },
     charAt = function(index) {
-      assert_that(is_counting_number(index))
-      if (index > nchar(self$.value)) {
+      if (!is_counting_number(index)) {
+        stop('`index` must be a positive integer', call. = FALSE)
+      }
+      if (index > nchar(private$value)) {
         stop('`index` out of bounds', call. = FALSE)
       }
-      substr(self$.value, start = index, stop = index)
+
+      substr(private$value, start = index, stop = index)
     },
     getChars = function(begin, end) {
-      assert_that(
-        is_counting_number(begin),
-        is_counting_number(end)
-      )
-      if (begin < 1 || end > nchar(self$.value)) {
+      if (!is_counting_number(begin) || !is_counting_number(end)) {
+        stop('`begin` and `end` must be positive integers', call. = FALSE)
+      }
+
+      if (begin < 1 || end > nchar(private$value)) {
         stop('`index` out of bounds', call. = FALSE)
       }
-      substr(self$.value, start = begin, stop = end)
+      if (begin > end) {
+        stop('`begin` must be less than `end`', call. = FALSE)
+      }
+
+      strsplit(substr(private$value, start = begin, stop = end), split = '')[[1]]
+    },
+    getBytes = function() {
+      charToRaw(private$value)
     },
     equals = function(object) {
       !is.null(object) &&
-        (class(object) == 'String') &&
+        is.string(object) &&
         self$compareTo(object)
     },
     contentEquals = function(object) {
-      self$equals(String(object))
+      tryCatch(
+        strject <- string(object),
+        error = function(e) {
+          stop('Could not coerce `object` to string')
+        }
+      )
+
+      self$equals(strject)
     },
     equalsIgnoreCase = function(another) {
-      class(another) == 'String' &&
+      if (is.null(another)) return(FALSE)
+
+      is.string(another) &&
         self$length() == another$length() &&
-        all(
-          vapply(
-            X = seq_len(self$length()),
-            FUN = function(i) {
-              c1 <- self$getChar(i)
-              c2 <- self$getChar(i)
-              c1 == c2 || toupper(c1) == toupper(c2) || tolower(c1) == tolower(c2)
-            },
-            FUN.VALUE = logical(1),
-            USE.NAMES = FALSE
-          )
-        )
+        toupper(tolower(private$value)) == toupper(tolower(another$toString()))
     },
     compareTo = function(another) {
-      if (class(another) != 'String') return(FALSE)
-
-      if (another$length() > self$length()) {
-        k <- self$length()
-      } else if (another$length() < self$length()) {
-        k <- another$length()
-      } else {             # lengths equal
-        k <- self$length() # could also be another$length()
+      if (!is.string(another) && !is.character(another)) {
+        stop('Argument `another` must be of class string or character', call. = FALSE)
       }
 
+      another <- string(another)
+      k <- min(self$length(), another$length())
+
       for (i in seq_len(k)) {
-        diff <- utf8ToInt(self$getChar(i)) - utf8ToInt(another$getChar(i))
+        diff <- utf8ToInt(self$charAt(i)) - utf8ToInt(another$charAt(i))
         if (diff != 0) {
           return(diff)
         }
@@ -91,13 +106,17 @@ string <- R6::R6Class(
       self$length() - another$length()
     },
     compareToIgnoreCase = function(another) {
-      if (class(another) != 'String') return(FALSE)
+      if (!is.string(another)) return(FALSE)
 
-      String(toupper(tolower(self$.value)))$compareTo(
-        String(toupper(tolower(another$.value)))
+      string(toupper(tolower(private$value)))$compareTo(
+        string(toupper(tolower(another$toString())))
       )
     },
     regionMatches = function(toffset, other, ooffset, len, ignoreCase = FALSE) {
+      if (!is.string(other)) {
+        stop('`other` must be of class string')
+      }
+
       if (toffset < 0 || ooffset < 0) {
         return(FALSE)
       }
@@ -105,44 +124,40 @@ string <- R6::R6Class(
         return(FALSE)
       }
 
-      for (i in seq.int(0, len, by = 1)) {
-        c1 <- self$getChar(toffset + i)
-        c2 <- self$getChar(ooffset + i)
+      tregion <- substr(private$value, start = toffset, stop = toffset + len)
+      oregion <- substr(other$toString(), start = offset, stop = offset + len)
 
-        if (ignoreCase) {
-          if (tolower(c1) != tolower(c2) || toupper(c1) != toupper(c2)) {
-            return(FALSE)
-          }
-        } else {
-          if (c1 != c2) {
-            return(FALSE)
-          }
-        }
+      if (ignoreCase) {
+        toupper(tolower(tregion)) == toupper(tolower(oregion))
+      } else {
+        tregion == oregion
       }
-
-      TRUE
     },
     startsWith = function(prefix, toffset = 1) {
-      if (class(prefix) == 'String' || is.character(prefix)) {
-        stop('`prefix` must be of class String or character', call. = FALSE)
+      if (!is.string(prefix) && !is.character(prefix)) {
+        stop('`prefix` must be of class string or character', call. = FALSE)
       }
 
-      if (prefix == '' || self$equals(prefix)) return(TRUE)
+      if (prefix == '' || self$equals(prefix)) {
+        return(TRUE)
+      }
 
-      self$regionMatches(toffset, String(prefix), 1, length(prefix))
+      self$regionMatches(toffset, string(prefix), 1, length(prefix))
     },
     endsWith = function(suffix) {
-      if (class(prefix) == 'String' || is.character(prefix)) {
-        stop('`prefix` must be of class String or character', call. = FALSE)
+      if (!is.string(suffix) && !is.character(prefix)) {
+        stop('`prefix` must be of class string or character', call. = FALSE)
       }
 
-      if (suffix == '' || self$equals(suffix)) return(TRUE)
+      if (suffix == '' || self$equals(suffix)) {
+        return(TRUE)
+      }
 
       self$regionMatches(self$length() - length(suffix),
-                         String(suffix), 1, lenth(suffix))
+                         string(suffix), 1, lenth(suffix))
     },
     hashCode = function() {
-      if (self$.value == '') return(0)
+      if (private$value == '') return(0)
 
       sum(
         vapply(
@@ -155,87 +170,184 @@ string <- R6::R6Class(
         )
       )
     },
-    indexOf = function(ch, fromIndex = 1) {
-      if (!is.character(ch)) {
-        stop('`ch` must be a single character')
+    indexOf = function(str, fromIndex = NULL) {
+      if (!is.string(str) && !is.character(str)) {
+        stop('`str` must be of class string or character')
       }
 
-      index <- which(strsplit(self$.value, '')[[1]] == ch)[1]
+      fromIndex <- if (is.null(fromIndex)) 1 else fromIndex
 
-      if (is.na(index) || index < fromIndex) -1 else index
-    },
-    lastIndexOf = function(ch, fromIndex = Inf) {
-      if (!is.character(ch)) {
-        stop('`ch` must be a single character')
+      if (fromIndex > self$length()) {
+        return(-1)
       }
 
-      indeces <- which(strsplit(self$.value, '')[[1]] == ch)
-      index <- indeces[length(indeces)]
+      target <- if (is.string(str)) str$toString() else str
+      trimmed <- substr(private$value, start = fromIndex, stop = self$length())[[1]]
 
-      if (is.na(index) || index > fromIndex) -1 else index
+      regexpr(pattern = target, text = trimmed, fixed = TRUE)
     },
-    substring = function(beginIndex, endIndex) {
+    lastIndexOf = function(str, fromIndex = NULL) {
+      if (!is.string(str) && !is.character(str)) {
+        stop('`str` must be of class string or character')
+      }
+
+      fromIndex <- if (is.null(fromIndex)) self$length() else fromIndex
+
+      if (fromIndex <= 0) {
+        return(-1)
+      }
+
+      target <- if (is.string(str)) str$toString() else str
+      trimmed <- substr(private, start = 1, stop = fromIndex)
+
+      regexpr(pattern = target, text = trimmed, fixed = TRUE)
+    },
+    substring = function(beginIndex, endIndex = NULL) {
       if (beginIndex < -1 ) {
         stop('`beginIndex` out of bounds')
       }
-      if (endIndex > nchar(self$.value)) {
+
+      endIndex <- if (is.null(endIndex)) self$length() else endIndex
+      if (endIndex > nchar(private$value)) {
         stop('`endIndex` out of bounds')
       }
 
-      String(substr(self$.value, start = beginIndex, stop = endIndex))
+      string(substr(private$value, start = beginIndex, stop = endIndex))
     },
     concat = function(str) {
-      String(paste0(self$.value, str))
+      if (!is.string(str) && !is.character(str)) {
+        stop('`str` must be of class string or character')
+      }
+
+      string(paste0(private$value, str))
     },
     replace = function(oldChar, newChar) {
       if (!is.character(oldChar) || nchar(oldChar) > 1) {
         stop('`oldChar` must be a single character')
       }
       if (!is.character(newChar) || nchar(newChar) > 1) {
-        stop('`newChar` must be a single character')
+        stop('`newChar` must be a single character', call. = FALSE)
       }
-      splits <- strsplit(self$.value, '')[[1]]
-      splits[which(splits == oldChar)] <- newChar
 
-      String(paste(splits, sep = '', collapse = ''))
+      if (self$indexOf(oldChar) < 0) {
+        self
+      } else {
+        string(gsub(pattern = oldChar, replacement = newChar, fixed = TRUE))
+      }
     },
     matches = function(regex) {
       if (!is.character(regex)) {
-        stop('`regex` must be of class character')
+        stop('`regex` must be of class character', call. = FALSE)
       }
 
-      grepl(regex, self$.value)
+      grepl(regex, private$value)
     },
-    contains = function(s) {
-      if (!is.character(s)) {
-        stop('`s` must be of class character')
+    replaceFirst = function(regex, replacement) {
+      if (!is.string(regex) && !is.character(regex)) {
+        stop('Argument `regex` must be of class string or character', call. = FALSE)
       }
-      grepl(s, self$.value, fixed = TRUE)
+      if (!is.string(replacement) || !is.character(replacement)) {
+        stop('Argument `replacement` must be of class string or character', call. = FALSE)
+      }
+
+      regex <- if (is.string(regex)) regex$toString() else regex
+      replacement <- if (is.string(replacement)) replacement$toString() else replacement
+
+      string(sub(pattern = regex, replacement = replacement))
+    },
+    replaceAll = function(regex, replacement) {
+      if (!is.string(regex) && !is.character(regex)) {
+        stop('Argument `regex` must be of class string or character', call. = FALSE)
+      }
+      if (!is.string(replacement) && !is.character(replacement)) {
+        stop('Argument `replacement` must be of class string or character', call. = FALSE)
+      }
+
+      regex <- if (is.string(regex)) regex$toString() else regex
+      replacement <- if (is.string(replacement)) replacement$toString() else replacement
+
+      string(gsub(pattern = regex, replacement = replacement))
+    },
+    split = function(regex, limit = NULL) {
+      if (!is.string(regex) && !is.character(regex)) {
+        stop('Argument `regex` must be of class string or character', call. = FALSE)
+      }
+      if (!is.null(limit) && !is_counting_number(limit)) {
+        stop('If specified, argument `limit` must be a positive integer', call. = FALSE)
+      }
+
+      if (!grepl(pattern = regex, text = private$value)) {
+        return(private$value)
+      }
+
+      splitted <- strsplit(private$value, split = regex)[[1]]
+
+      if (is.null(limit) || limit >= length(splitted)) {
+        splitted
+      } else {
+        # The nastiness below combines the excess elements past `limit`
+        # generated by splitting private$value on `regex`.
+        #
+        # @TODO refactor this madness
+        indeces <- gregexpr(pattern = regex, text = private$value)[[1]]
+        splitters <- vapply(
+          X = seq_along(indeces),
+          FUN = function(i) self$substring(indeces[i], attr(indeces, 'match.length')[i]),
+          VALUE = character(1)
+        )
+
+        splitted_limit <- limit:(length(splitted) - 1)
+        splitters_limit <- limit:length(splitted)
+        pasted <- paste(splitted[splitted_limit], splitters[splitters_limit], collapse = '', sep = '')
+        pasted <- paste0(pasted, splitted[length(splitted)])
+
+        c(splitted[1:limit], pasted)
+      }
+    },
+    toLowerCase = function() {
+      string(tolower(private$value))
+    },
+    toUpperCase = function() {
+      string(toupper(private$value))
+    },
+    trim = function() {
+      string(trim(private$value, which = 'both'))
     },
     toString = function() {
-      self$.value
+      private$value
+    },
+    toCharArray = function() {
+      strsplit(private$value, split = '')[[1]]
+    },
+    length = function() {
+      nchar(private$value)
+    },
+    isEmpty = function() {
+      self$length() == 0
     }
   )
 )
 
 #' Print a String
 #'
-#' Print a String object.
+#' Print a string object.
 #'
-#' @param x An object of class String.
+#' @param x An object of class string.
 #'
 #' @export
-print.String <- function(x) {
+print.string <- function(x) {
   print(x$toString())
 }
 
 #' String Length
 #'
-#' The length of a String object.
+#' The length of a string object.
 #'
-#' @param x An object of class String.
+#' @param x An object of class string.
 #'
 #' @export
-length.String <- function(x) {
+length.string <- function(x) {
   x$length()
 }
+
+
