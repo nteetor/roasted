@@ -1,5 +1,5 @@
 # roasted
 
-[![Travis-CI Build Status](https://travis-ci.org/NA/NA.svg?branch=master)](https://travis-ci.org/NA/NA)
+[![Travis-CI Build Status](https://travis-ci.org/nteetor/roasted.svg?branch=master)](https://travis-ci.org/nteetor/roasted)
 
 R mimicking Java
