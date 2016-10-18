@@ -53,9 +53,8 @@ String <- R6::R6Class(
       if (!is_counting_number(begin) || !is_counting_number(end)) {
         stop('`begin` and `end` must be positive integers', call. = FALSE)
       }
-
-      if (begin < 1 || end > nchar(private$value)) {
-        stop('`index` out of bounds', call. = FALSE)
+      if (end > nchar(private$value)) {
+        stop('`end` out of bounds', call. = FALSE)
       }
       if (begin > end) {
         stop('`begin` must be less than `end`', call. = FALSE)
@@ -82,9 +81,8 @@ String <- R6::R6Class(
       self$equals(strject)
     },
     equalsIgnoreCase = function(another) {
-      if (is.null(another)) return(FALSE)
-
-      is.string(another) &&
+      !is.null(another) &&
+        is.string(another) &&
         self$length() == another$length() &&
         toupper(tolower(private$value)) == toupper(tolower(another$toString()))
     },
@@ -118,6 +116,7 @@ String <- R6::R6Class(
         stop('`other` must be of class string')
       }
 
+      len <- len - 1
       if (toffset < 0 || ooffset < 0) {
         return(FALSE)
       }
@@ -125,8 +124,8 @@ String <- R6::R6Class(
         return(FALSE)
       }
 
-      tregion <- substr(private$value, start = toffset, stop = toffset + len)
-      oregion <- substr(other$toString(), start = offset, stop = offset + len)
+      tregion <- self$substring(toffset, toffset + len)$toString()
+      oregion <- other$substring(ooffset, ooffset + len)$toString()
 
       if (ignoreCase) {
         toupper(tolower(tregion)) == toupper(tolower(oregion))
@@ -139,23 +138,27 @@ String <- R6::R6Class(
         stop('`prefix` must be of class string or character', call. = FALSE)
       }
 
-      if (prefix == '' || self$equals(prefix)) {
+      prefix <- string(prefix)
+
+      if (prefix$contentEquals('') || self$equals(prefix)) {
         return(TRUE)
       }
 
-      self$regionMatches(toffset, string(prefix), 1, length(prefix))
+      self$regionMatches(toffset, prefix, 1, prefix$length())
     },
     endsWith = function(suffix) {
-      if (!is.string(suffix) && !is.character(prefix)) {
+      if (!is.string(suffix) && !is.character(suffix)) {
         stop('`prefix` must be of class string or character', call. = FALSE)
       }
 
-      if (suffix == '' || self$equals(suffix)) {
+      suffix <- string(suffix)
+
+      if (suffix$contentEquals('') || self$equals(suffix)) {
         return(TRUE)
       }
 
-      self$regionMatches(self$length() - length(suffix),
-                         string(suffix), 1, lenth(suffix))
+      self$regionMatches(self$length() - suffix$length() + 1,
+                         suffix, 1, suffix$length())
     },
     hashCode = function() {
       if (private$value == '') return(0)
