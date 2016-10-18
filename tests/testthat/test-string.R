@@ -30,9 +30,40 @@ test_that('getChars method', {
   expect_error(garage$getChars(3, 2), '`begin` must be less')
 })
 
-test_that('compareTo method', {
+test_that('compareTo(ignoreCase = FALSE) method', {
   quality <- string('threadcount')
   expect_equal(quality$compareTo('dhreadcount'), utf8ToInt('t') - utf8ToInt('d'))
   expect_equal(quality$compareTo('threadcount'), 0)
+  turtles <- string('shreadcount')
+  expect_equal(quality$compareTo(turtles), 1)
   expect_error(quality$compareTo(NULL), 'Argument `another` must be of class string')
 })
+
+test_that('compareTo(ignoreCase = TRUE) method', {
+  detective <- string('conan')
+  expect_equal(detective$compareTo('cONaN', ignoreCase = TRUE), 0)
+})
+
+test_that('equals method', {
+  one <- string('one')
+
+  expect_false(one$equals(string('ONE')))
+  expect_false(one$equals('one'))
+  expect_false(one$equals(NULL))
+  expect_false(one$equals(1))
+
+  expect_true(one$equals(string('one')))
+})
+
+test_that('contentEquals method', {
+  two <- string('two')
+
+  expect_false(two$contentEquals('TWO'))
+
+  expect_true(two$contentEquals('two'))
+
+  expect_error(two$contentEquals(2), 'Could not coerce `object` to string')
+})
+
+
+

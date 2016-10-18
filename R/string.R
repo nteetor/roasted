@@ -69,7 +69,7 @@ String <- R6::R6Class(
     equals = function(object) {
       !is.null(object) &&
         is.string(object) &&
-        self$compareTo(object)
+        !self$compareTo(object)
     },
     contentEquals = function(object) {
       tryCatch(
@@ -88,7 +88,7 @@ String <- R6::R6Class(
         self$length() == another$length() &&
         toupper(tolower(private$value)) == toupper(tolower(another$toString()))
     },
-    compareTo = function(another) {
+    compareTo = function(another, ignoreCase = FALSE) {
       if (!is.string(another) && !is.character(another)) {
         stop('Argument `another` must be of class string or character', call. = FALSE)
       }
@@ -97,20 +97,21 @@ String <- R6::R6Class(
       k <- min(self$length(), another$length())
 
       for (i in seq_len(k)) {
-        diff <- utf8ToInt(self$charAt(i)) - utf8ToInt(another$charAt(i))
+        c1 <- self$charAt(i)
+        c2 <- another$charAt(i)
+
+        if (ignoreCase) {
+          diff <- utf8ToInt(toupper(tolower(c1))) - utf8ToInt(toupper(tolower(c2)))
+        } else {
+          diff <- utf8ToInt(c1) - utf8ToInt(c2)
+        }
+
         if (diff != 0) {
           return(diff)
         }
       }
 
       self$length() - another$length()
-    },
-    compareToIgnoreCase = function(another) {
-      if (!is.string(another)) return(FALSE)
-
-      string(toupper(tolower(private$value)))$compareTo(
-        string(toupper(tolower(another$toString())))
-      )
     },
     regionMatches = function(toffset, other, ooffset, len, ignoreCase = FALSE) {
       if (!is.string(other)) {
