@@ -125,6 +125,148 @@ HashMap <- R6::R6Class(
       } else {
         self$get(key)
       }
+    },
+    replace = function(key, old, new) {
+      if (self$containsKey(key) && self$get(key) == old) {
+        self$put(key, new)
+        TRUE
+      } else {
+        FALSE
+      }
+    },
+    computeIfAbsent = function(key, f) {
+      if (!is.function(f) && !inherits(f, 'formula')) {
+        stop('argument `f` must be a function or one-sided formula', call. = FALSE)
+      }
+
+      if (is.function(f) && length(formals(f)) != 1) {
+        stop('mapping function must only accept a single argument', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula') && length(f) != 2) {
+        stop('mapping formula must be one-sided', call. = FALSE)
+      }
+
+      if (!is.null(self$get(key))) {
+        return(self$get(key))
+      }
+
+      if (inherits(f, 'formula')) {
+        evalir <- environment(f)
+        evalir$`.key` <- key
+        f <- eval(call('function', as.pairlist(NULL), f[[2]]), envir = evalir)
+      }
+
+      result <- if (is.function(f)) f(key) else f()
+
+      if (is.null(result)) {
+        NULL
+      } else {
+        self$put(key, result)
+        result
+      }
+    },
+    computeIfPresent = function(key, f) {
+      if (!is.function(f) && !inherits(f, 'formula')) {
+        stop('argument `f` must be a function or one-sided formula', call. = FALSE)
+      }
+
+      if (is.function(f) && length(formals(f)) != 2) {
+        stop('function must accept 2 arguments', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula') && length(f) != 2) {
+        stop('mapping formula must be one-sided', call. = FALSE)
+      }
+
+      if (is.null(self$get(key))) {
+        return(NULL)
+      }
+
+      if (inherits(f, 'formula')) {
+        evalir <- environment(f)
+        evalir$`.key` <- key
+        evalir$`.value` <- self$get(key)
+
+        f <- eval(call('function', as.pairlist(NULL), f[[2]]), envir = evalir)
+      }
+
+      result <- if (is.function(f)) f(key, value) else f()
+
+      if (is.null(result)) {
+        self$remove(key)
+        NULL
+      } else {
+        self$put(key, result)
+        result
+      }
+    },
+    compute = function(key, f) {
+      if (!is.function(f) && !inherits(f, 'formula')) {
+        stop('argument `f` must be a function or one-sided formula', call. = FALSE)
+      }
+
+      if (is.function(f) && length(formals(f)) != 2) {
+        stop('function must accept 2 arguments', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula') && length(f) != 2) {
+        stop('mapping formula must be one-sided', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula')) {
+        evalir <- environment(f)
+        evalir$`.key` <- key
+        evalir$`.value` <- self$get(key)
+
+        f <- eval(call('function', as.pairlist(NULL), f[[2]]), envir = evalir)
+      }
+
+      result <- if (is.function(f)) f(key, value) else f()
+
+      if (is.null(result)) {
+        self$remove(key)
+        NULL
+      } else {
+        self$put(key, result)
+        result
+      }
+    },
+    merge = function(key, value, f) {
+      if (!is.function(f) && !inherits(f, 'formula')) {
+        stop('argument `f` must be a function or one-sided formula', call. = FALSE)
+      }
+
+      if (is.function(f) && length(formals(f)) != 2) {
+        stop('function must accept 2 arguments', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula') && length(f) != 2) {
+        stop('mapping formula must be one-sided', call. = FALSE)
+      }
+
+      if (is.null(self$get(key))) {
+        self$put(key, value)
+        return(value)
+      }
+
+      if (inherits(f, 'formula')) {
+        evalir <- environment(f)
+        evalir$`.value` <- self$get(key)
+        evalir$`..value` <- value
+
+        f <- eval(call('function', as.pairlist(NULL), f[[2]]), envir = evalir)
+      }
+
+      result <- if (is.function(f)) f(self$get(key), value) else f()
+
+      if (is.null(result)) {
+        self$remove(key)
+        NULL
+      } else {
+        self$put(key, result)
+        result
+      }
     }
   )
 )
