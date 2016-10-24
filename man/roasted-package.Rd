@@ -4,8 +4,11 @@
 \name{roasted-package}
 \alias{roasted}
 \alias{roasted-package}
-\title{What the Package Does (one line, title case)}
+\title{Java Classes In R}
 \description{
-What the package does (one paragraph).
+This package includes classes like those commonly used by Java
+programmers. While the R implementations of these classes may not provide
+runtime improvements, the package aims to diversify the toolset with which R
+programmers can tackle and think about problems.
 }
 

@@ -2,5 +2,8 @@
 
 S3method(length,string)
 S3method(print,string)
+export(hash_map)
+export(is.hash_map)
+export(is.map)
 export(is.string)
 export(string)

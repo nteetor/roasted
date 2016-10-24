@@ -23,9 +23,9 @@ is.hash_map <- function(x) {
 HashMap <- R6::R6Class(
   classname = c('hash_map', 'map'),
   private = list(
-    private$capacity = NULL,
-    private$load_factor = NULL,
-    private$mappings = NULL,
+    capacity = NULL,
+    load_factor = NULL,
+    mappings = NULL,
     deep_clone = function(name, value) {
       if (name == 'mappings') {
         list2env(as.list.environment(value, all.names = TRUE), parent = emptyenv())
