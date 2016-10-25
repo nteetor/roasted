@@ -267,6 +267,55 @@ HashMap <- R6::R6Class(
         self$put(key, result)
         result
       }
+    },
+    forEach = function(action) {
+      if (!is.function(action) && !inherits(action, 'formula')) {
+        stop('argument `action` must be a function', call. = FALSE)
+      }
+
+      if (is.function(action) && length(formals(action)) != 2) {
+        stop('function `action` must accept two arguments', call. = FALSE)
+      }
+
+      if (inherits(action, 'formula') && length(action) != 2) {
+        stop('formula `action` must be one-sided', call. = FALSE)
+      }
+
+      for (key in ls(private$mappings)) {
+        if (is.function(action)) {
+          action(key, private$mappings[[key]])
+        } else {
+          evact <- environment(action)
+          evact$`.key` <- key
+          evact$`.value` <- private$mappings[[key]]
+          (eval(call('function', as.pairlist(NULL), action[[2]]), envir = evact))()
+        }
+      }
+    },
+    replaceAll = function(f) {
+      if (!is.function(f) && !inherits(f, 'formula')) {
+        stop('argument `f` must be a function or formula', call. = FALSE)
+      }
+
+      if (is.function(f) && length(formals(f)) != 2) {
+        stop('function `f` must accept two arguments', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula') && length(f) != 2) {
+        stop('formula `f` must be one-sided', call. = FALSE)
+      }
+
+      for (key in ls(private$mappings)) {
+        if (is.function(f)) {
+          private$mappings[[key]] <- f(key, private$mappings[[key]])
+        } else {
+          evf <- environment(f)
+          evf$`.key` <- key
+          evf$`.value` <- private$mappings[[key]]
+          private$mappings[[key]] <-
+            (eval(call('function', as.pairlist(NULL), f[[2]]), envir = evf))()
+        }
+      }
     }
   )
 )

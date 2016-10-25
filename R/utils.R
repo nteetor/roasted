@@ -7,3 +7,7 @@ is_counting_number <- function(x) {
 is_named <- function(x) {
   assertthat::has_attr(x, 'names')
 }
+
+unique_id <- function() {
+  substr(tempfile('', ''), 2, 12)
+}
