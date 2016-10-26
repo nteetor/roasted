@@ -55,8 +55,63 @@ Collection <- R6::R6Class(
       )
       FALSE
     },
+    containsAll = function(c) {
+      all(vapply(c, function(e) self$contains(e), logical(1)))
+    },
     addAll = function(c) {
-      # WORKING HERE
+      any(vapply(c, function(e) self$add(e), logical(1)))
+    },
+    removeAll = function(c) {
+      any(vapply(c, function(e) self$remove(e), logical(1)))
+    },
+    removeIf = function(f) {
+      if (!is.function(f) && !inherits(f, 'formula')) {
+        stop('argument `f` must be a function or formula', call. = FALSE)
+      }
+
+      if (is.function(f) && length(formals(f)) != 1) {
+        stop('function `f` must be accept a single argument', call. = FALSE)
+      }
+
+      if (inherits(f, 'formula') && length(f) != 2) {
+        stop('formula `f` must be one-sided', call. = FALSE)
+      }
+
+      modiflag <- FALSE
+      itr <- self$iterator()
+      while (itr$hasNext()) {
+        if (is.function(f)) {
+          if (f(itr$getNext())) {
+            itr$remove()
+            modiflag <- TRUE
+          }
+        } else {
+          evf <- environment(f)
+          evf$`.` <- itr$getNext()
+          if ((eval(call('function', as.pairlist(NULL), f[[2]]), envir = evf))()) {
+            itr$remove()
+            modiflag <- TRUE
+          }
+        }
+      }
+      modiflag
+    },
+    retainAll = function(c) {
+      any(vapply(c, function(e) if (!self$contains(e)) self$remove(e), logical(1)))
+    },
+    clear = function() {
+      self$elements <- new.env(parent = emptyenv())
+    },
+    equals = function(o) {
+      if (inherits(o, 'collection') && self$size() == o$size()) {
+        all(vapply(o$toList(), function(e) self$contains(e), logical(1))) &&
+          all(vapply(self$toList(), function(e) o$contains(e), logical(1)))
+      } else {
+        FALSE
+      }
+    },
+    hashCode = function() {
+      stop('hashCode method is not implemented', call. = FALSE)
     }
   )
 )

@@ -29,9 +29,9 @@ Iterator <- R6::R6Class(
         stop('no element to remove', call. = FALSE)
       }
 
-      private$collection$remove(
-        private$collection$.__enclos_env__$private$elements[[private$cursor]]
-      )
+      private$collection$remove(private$collection$
+                                  .__enclos_env__$private$
+                                  elements[[private$cursor]])
       private$cursor <- NULL
     }
   )
